@@ -37,7 +37,8 @@ sample={
     "frameWidth" :1602
 }
 
-
+def cube(x):
+    return x*x*x*x
 
 def edgeOf(line, direction):
     checkwidth=int(len(line)/6)
@@ -47,8 +48,8 @@ def edgeOf(line, direction):
     for idx in range(checkwidth, len(line)-checkwidth):
         delta=0
         for i in range(1, checkwidth):
-            diff=line[idx-i] - line[idx+i]
-            delta= delta + (diff * abs(diff))
+            diff=(cube(line[idx-i]) - cube(line[idx+i]))
+            delta+=diff
         #trace.append((idx,delta))
         if(delta<lowest[1]):
             lowest=(idx, delta)
@@ -73,7 +74,7 @@ def holePosition(im):
         line.append(total)
     # The floor value will be used to prevent brand markings between holes to
     # interfere with the (fragile) logic of edge detection
-    floor=sorted(line, reverse=True)[int(1.05 * (sample['holeHeight'] * height / sample['imageHeight']))]
+    floor=sorted(line, reverse=True)[int(1.5 * (sample['holeHeight'] * height / sample['imageHeight']))]
     for idx in range (0,int(height/2)):
         if line[idx] < floor:
             line[idx]=floor
@@ -87,7 +88,7 @@ def holePosition(im):
         line.append(total)
     # The floor value will be used to prevent brand markings between holes to
     # interfere with the (fragile) logic of edge detection
-    floor=sorted(line, reverse=True)[int(1.05 * (sample['holeHeight'] * height / sample['imageHeight']))]
+    floor=sorted(line, reverse=True)[int(1.5 * (sample['holeHeight'] * height / sample['imageHeight']))]
     for idx in range (0,len(line)):
         if line[idx] < floor:
             line[idx]=floor
@@ -103,7 +104,7 @@ def holePosition(im):
         line.append(total)
     # The floor value will be used to prevent brand markings between holes to
     # interfere with the (fragile) logic of edge detection
-    floor=sorted(line, reverse=True)[int(1.05 * (sample['holeWidth'] * width / sample['imageWidth']))]
+    floor=sorted(line, reverse=True)[int(1.5 * (sample['holeWidth'] * width / sample['imageWidth']))]
     for idx in range (0,len(line)):
         if line[idx] < floor:
             line[idx]=floor
@@ -111,7 +112,12 @@ def holePosition(im):
 
 
     print (sys.argv[1]+": topHole="+str(topHole)+", bottomHole="+str(bottomHole)+", holeRightEdge="+str(holeRightEdge))
-
+    for i in range(-10,10):
+        im.putpixel((int(width/10)+i, topHole),(255,0,0))
+        im.putpixel((int(width/10)+i, bottomHole),(255,0,0))
+        im.putpixel((holeRightEdge,10+topHole+i ),(255,0,0))
+    im.save(sys.argv[1])
+        
 
         
 
