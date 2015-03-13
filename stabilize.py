@@ -27,17 +27,23 @@
 # requires pillow library
 from PIL import Image
 import sys
+import os
+
+stream=[]
+
 
 sample={
-    "holeHeight" : 198,
-    "holeWidth"  : 290,
-    "imageHeight":2400,
-    "imageWidth":2400,
-    "frameHeight":1202,
-    "frameWidth" :1602
+    "holeHeight" : 168,
+    "holeWidth"  : 234,
+    "imageHeight":1948,
+    "imageWidth" :1949,
+    "frameHeight": 968,
+    "frameWidth" :1312,
+    "frameYoffset":  80,
+    "frameXoffset":   6
 }
 
-def cube(x):
+def quadra(x):
     return x*x*x*x
 
 def edgeOf(line, direction):
@@ -48,7 +54,7 @@ def edgeOf(line, direction):
     for idx in range(checkwidth, len(line)-checkwidth):
         delta=0
         for i in range(1, checkwidth):
-            diff=(cube(line[idx-i]) - cube(line[idx+i]))
+            diff=(quadra(line[idx-i]) - quadra(line[idx+i]))
             delta+=diff
         #trace.append((idx,delta))
         if(delta<lowest[1]):
@@ -110,18 +116,82 @@ def holePosition(im):
             line[idx]=floor
     holeRightEdge=edgeOf(line, "lightToDark")
 
+    line=[]
+    y=bottomHole+int((bottomHole-topHole)/(2*sample['frameHeight']/sample['holeHeight']))
+    #print("Checking right edge at y="+str(y))
+    for x in range(0,int(width/4)):
+        total=0
+        for i in im.getpixel((x, y)):
+            total+=i
+        line.append(total)
+    # The floor value will be used to prevent brand markings between holes to
+    # interfere with the (fragile) logic of edge detection
+    floor=sorted(line, reverse=True)[int(1.5 * (sample['holeWidth'] * width / sample['imageWidth']))]
+    for idx in range (0,len(line)):
+        if line[idx] < floor:
+            line[idx]=floor
+    holeRightEdgeLower=edgeOf(line, "lightToDark")
 
-    print (sys.argv[1]+": topHole="+str(topHole)+", bottomHole="+str(bottomHole)+", holeRightEdge="+str(holeRightEdge))
-    for i in range(-10,10):
-        im.putpixel((int(width/10)+i, topHole),(255,0,0))
-        im.putpixel((int(width/10)+i, bottomHole),(255,0,0))
-        im.putpixel((holeRightEdge,10+topHole+i ),(255,0,0))
-    im.save(sys.argv[1])
+
+    print ("topHole="+str(topHole)+", bottomHole="+str(bottomHole)+", holeRightEdge="+str(holeRightEdge))
+#    for i in range(-10,10):
+#        im.putpixel((int(width/10)+i, topHole),(255,0,0))
+#        im.putpixel((int(width/10)+i, bottomHole),(255,0,0))
+#        im.putpixel((holeRightEdge,10+topHole+i ),(255,0,0))
+    return (topHole, bottomHole, holeRightEdge, holeRightEdgeLower)
         
 
-        
+positions={}
+numOfImages=0
+totalTopHole=0
+totalBottomHole=0
+totalHoleRightEdge=0
+totalHoleRightEdgeLower=0
+for pidx in range(1,len(sys.argv)):    
+    try:
+        im=Image.open(sys.argv[pidx])
+        results=holePosition(im)
+        positions[sys.argv[pidx]]=results
+        numOfImages+=1
+        totalTopHole+=results[0]
+        totalBottomHole+=results[1]
+        totalHoleRightEdge+=results[2]
+        totalHoleRightEdgeLower+=results[3]
+    except:
+        pass
+avgTopHole=int(totalTopHole/numOfImages)
+avgBottomHole=int(totalBottomHole/numOfImages)
+avgHoleRightEdge=int(totalHoleRightEdge/numOfImages)
+avgHoleRightEdgeLower=int(totalHoleRightEdgeLower/numOfImages)
 
 
-im=Image.open(sys.argv[1])
-holePosition(im)
+avgDeltaHole=avgBottomHole-avgTopHole
+avgDeltaEdge=int((avgHoleRightEdge+avgHoleRightEdgeLower)/2)
 
+sizeYOut=avgDeltaHole + (avgDeltaHole % 2)
+sizeXOut=int(avgDeltaHole * 2 / 3) * 2
+scaledXOffset=int(sample['frameXoffset']*sizeXOut/sample['frameWidth'])
+scaledYOffset=int(sample['frameYoffset']*sizeYOut/sample['frameHeight'])
+
+for pic in positions:
+    im=Image.open(pic)
+    results=positions[pic]
+    topHole=results[0]
+    bottomHole=results[1]
+    holeRightEdge=results[2]
+    holeRightEdgeLower=results[3]
+    if abs(topHole-avgTopHole) < abs(bottomHole-avgBottomHole):
+        bottomHole=topHole+avgDeltaHole
+    else:
+        topHole=bottomHole-avgDeltaHole
+    if abs(holeRightEdge-avgHoleRightEdge) < abs(holeRightEdgeLower-avgHoleRightEdgeLower):
+        holeRightEdgeLower=avgHoleRightEdgeLower + holeRightEdge-avgHoleRightEdge
+    else:
+        holeRightEdge=avgHoleRightEdge+holeRightEdgeLower-avgHoleRightEdgeLower
+    x1=holeRightEdge+scaledXOffset
+    y1=topHole+scaledYOffset
+    x2=x1+sizeXOut
+    y2=y1+sizeYOut
+    print("Cropping "+pic+" with values: "+str((x1,y1,x2,y2))+ " and saving in subdirectory cropped/")
+    im.crop((x1,y1,x2,y2)).save("cropped/"+pic)
+    
