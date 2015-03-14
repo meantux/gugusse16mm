@@ -40,11 +40,11 @@ sample={
     "frameHeight": 968,
     "frameWidth" :1312,
     "frameYoffset":  80,
-    "frameXoffset":   6
+    "frameXoffset":  18
 }
 
-def quadra(x):
-    return x*x*x*x
+def square(x):
+    return x*x
 
 def edgeOf(line, direction):
     checkwidth=int(len(line)/6)
@@ -54,7 +54,7 @@ def edgeOf(line, direction):
     for idx in range(checkwidth, len(line)-checkwidth):
         delta=0
         for i in range(1, checkwidth):
-            diff=(quadra(line[idx-i]) - quadra(line[idx+i]))
+            diff=(square(line[idx-i]) - square(line[idx+i]))
             delta+=diff
         #trace.append((idx,delta))
         if(delta<lowest[1]):
@@ -80,7 +80,7 @@ def holePosition(im):
         line.append(total)
     # The floor value will be used to prevent brand markings between holes to
     # interfere with the (fragile) logic of edge detection
-    floor=sorted(line, reverse=True)[int(1.5 * (sample['holeHeight'] * height / sample['imageHeight']))]
+    floor=sorted(line, reverse=True)[int(2.0 * (sample['holeHeight'] * height / sample['imageHeight']))]
     for idx in range (0,int(height/2)):
         if line[idx] < floor:
             line[idx]=floor
