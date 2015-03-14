@@ -28,6 +28,8 @@
 from PIL import Image
 import sys
 import os
+import wave
+
 
 stream=[]
 
@@ -40,11 +42,22 @@ sample={
     "frameHeight": 968,
     "frameWidth" :1312,
     "frameYoffset":  80,
-    "frameXoffset":  18
+    "frameXoffset":  18,
+    "Tracks_start":1348,
+    "Tracks_mid"  :1463,
+    "Tracks_end"  :1578
 }
 
 def square(x):
     return x*x
+
+
+def floorIt(track):
+    print("Finding track floor")
+    floor=min(track)
+    for i in range(0,len(track)):
+        val=track[i] - floor
+    
 
 def edgeOf(line, direction):
     checkwidth=int(len(line)/6)
@@ -173,7 +186,13 @@ sizeXOut=int(avgDeltaHole * 2 / 3) * 2
 scaledXOffset=int(sample['frameXoffset']*sizeXOut/sample['frameWidth'])
 scaledYOffset=int(sample['frameYoffset']*sizeYOut/sample['frameHeight'])
 
-for pic in positions:
+soundStartOffset=int(sample['Tracks_start']*sizeYOut/sample['frameHeight'])
+soundMidOffset=int(sample['Tracks_mid']*sizeYOut/sample['frameHeight'])
+soundEndOffset=int(sample['Tracks_end']*sizeYOut/sample['frameHeight'])
+
+left=[]
+right=[]
+for pic in sorted(positions):
     im=Image.open(pic)
     results=positions[pic]
     topHole=results[0]
@@ -192,6 +211,48 @@ for pic in positions:
     y1=topHole+scaledYOffset
     x2=x1+sizeXOut
     y2=y1+sizeYOut
+    x3=holeRightEdge+soundStartOffset
+    x4=holeRightEdge+soundMidOffset
+    x5=holeRightEdge+soundEndOffset
     print("Cropping "+pic+" with values: "+str((x1,y1,x2,y2))+ " and saving in subdirectory cropped/")
     im.crop((x1,y1,x2,y2)).save("cropped/"+pic)
-    
+    #im.crop((x3,y1,x4,y2)).save("sound/"+pic)
+    for y in range(y1, y2):
+        line=[]
+        for x in range(x3,x4):
+            total=0
+            line.append(sum(im.getpixel((x, y))))
+        threshold=int((min(line)+max(line))/2)
+        value=0
+        for i in line:
+            if i > threshold:
+                value+=1
+        left.append(value)
+        
+        line=[]
+        for x in range(x4,x5):
+            total=0
+            line.append(sum(im.getpixel((x, y))))
+        threshold=int((min(line)+max(line))/2)
+        value=0
+        for i in line:
+            if i > threshold:
+                value+=1
+        right.append(value)
+print("Processing Sound Data")
+
+floorIt(left)
+floorIt(right)
+       
+woutput = wave.open('out.wav', 'w')
+woutput.setparams((2,2,24*sizeYOut, 0, 'NONE', 'not compressed'))
+
+values=[]
+print("Converting to wave")
+value_str=b''
+for i in range(0,len(left)):
+    value_str+=wave.struct.pack('h', left[i])
+    value_str+=wave.struct.pack('h', right[i])
+
+woutput.writeframes(value_str)
+woutput.close()
