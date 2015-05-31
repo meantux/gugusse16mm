@@ -32,18 +32,12 @@ import wave
 
 
 
-sample={
-    "holeHeight" : 168,
-    "holeWidth"  : 234,
-    "imageHeight":1948,
-    "imageWidth" :1949,
-    "frameHeight": 968,
-    "frameWidth" :1312,
-    "frameYoffset":  80,
-    "frameXoffset":  18,
-    "Tracks_start":1348,
-    "Tracks_mid"  :1463,
-    "Tracks_end"  :1578
+reference={
+    #       width, height, xoffset, yoffset
+    "hole": (138,98,103,742),
+    "frame": (788, 578, 242, 219),
+    #       width, height, xoffset, yoffset, numOfChannels
+    "audio": (162, 578, 1048, 225, 1),
 }
 
 def square(x):
@@ -79,10 +73,9 @@ class Channel:
 
     
 
-def edgeOf(line, direction):
-    checkwidth=int(len(line)/6)
-    lowest=(0,0.0)
-    highest=(0,0.0)
+def edgeOf(line, direction, checkwidth):
+    lowest=None
+    highest=None
     #trace=[]
     for idx in range(checkwidth, len(line)-checkwidth):
         delta=0
@@ -90,9 +83,9 @@ def edgeOf(line, direction):
             diff=(square(line[idx-i]) - square(line[idx+i]))
             delta+=diff
         #trace.append((idx,delta))
-        if(delta<lowest[1]):
+        if lowest == None or (delta<lowest[1]):
             lowest=(idx, delta)
-        if(delta>highest[1]):
+        if highest == None or (delta>highest[1]):
             highest=(idx, delta)
     #print (str(trace))
     if direction == "darkToLight":
@@ -100,78 +93,50 @@ def edgeOf(line, direction):
     if direction == "lightToDark":
         return highest[0]
 
-def holePosition(im):
+def holeVerticalOffset(im, hoffs=0):
     width=im.size[0]
     height=im.size[1]
     
-    # Let's figure out the top and bottom of the upper hole
+    # Let's figure out the top of the hole
     line=[]
-    for y in range(0,int(height/2)):
+    sampleBottom=min(height, reference['hole'][3] + 2 * reference['hole'][1])
+    sampleTop=max(0, reference['hole'][3] - reference['hole'][1])
+    midX=reference['hole'][2] + int(reference['hole'][0] / 2) + hoffs
+    for y in range(sampleTop, sampleBottom):
         total=0
-        for i in im.getpixel((width/10, y)):
+        for i in im.getpixel((midX, y)):
             total+=i
         line.append(total)
     # The floor value will be used to prevent brand markings between holes to
     # interfere with the (fragile) logic of edge detection
-    floor=sorted(line, reverse=True)[int(2.0 * (sample['holeHeight'] * height / sample['imageHeight']))]
-    for idx in range (0,int(height/2)):
-        if line[idx] < floor:
-            line[idx]=floor
-    topHole=edgeOf(line, "darkToLight")
-
-    line=[]
-    for y in range(int(height/2), height):
-        total=0
-        for i in im.getpixel((width/10, y)):
-            total+=i
-        line.append(total)
-    # The floor value will be used to prevent brand markings between holes to
-    # interfere with the (fragile) logic of edge detection
-    floor=sorted(line, reverse=True)[int(1.5 * (sample['holeHeight'] * height / sample['imageHeight']))]
+    floor=sorted(line, reverse=True)[int(1.5 * reference['hole'][1])]
     for idx in range (0,len(line)):
         if line[idx] < floor:
             line[idx]=floor
-    bottomHole=int(height/2)+edgeOf(line, "darkToLight")
-
+    topHole=edgeOf(line, "darkToLight",int(50*reference['hole'][1]/100))+sampleTop
+    return topHole - reference['hole'][3]
+def holeHorizontalOffset(im, voffs=0):
+    width=im.size[0]
+    height=im.size[1]
+    
+    # Let's figure out the top of the hole
     line=[]
-    y=topHole+int((bottomHole-topHole)/(2*sample['frameHeight']/sample['holeHeight']))
-    print("Checking right edge at y="+str(y))
-    for x in range(0,int(width/4)):
+    sampleRight=min(width, reference['hole'][2] + 2 * reference['hole'][0])
+    sampleLeft=max(0, reference['hole'][2] - reference['hole'][0])
+    midY=reference['hole'][3] + int(reference['hole'][1] / 2) + voffs
+    for x in range(sampleLeft, sampleRight):
         total=0
-        for i in im.getpixel((x, y)):
+        for i in im.getpixel((x, midY)):
             total+=i
         line.append(total)
     # The floor value will be used to prevent brand markings between holes to
     # interfere with the (fragile) logic of edge detection
-    floor=sorted(line, reverse=True)[int(1.5 * (sample['holeWidth'] * width / sample['imageWidth']))]
+    floor=sorted(line, reverse=True)[int(1.25 * reference['hole'][0])]
     for idx in range (0,len(line)):
         if line[idx] < floor:
             line[idx]=floor
-    holeRightEdge=edgeOf(line, "lightToDark")
-
-    line=[]
-    y=bottomHole+int((bottomHole-topHole)/(2*sample['frameHeight']/sample['holeHeight']))
-    #print("Checking right edge at y="+str(y))
-    for x in range(0,int(width/4)):
-        total=0
-        for i in im.getpixel((x, y)):
-            total+=i
-        line.append(total)
-    # The floor value will be used to prevent brand markings between holes to
-    # interfere with the (fragile) logic of edge detection
-    floor=sorted(line, reverse=True)[int(1.5 * (sample['holeWidth'] * width / sample['imageWidth']))]
-    for idx in range (0,len(line)):
-        if line[idx] < floor:
-            line[idx]=floor
-    holeRightEdgeLower=edgeOf(line, "lightToDark")
-
-
-    print ("topHole="+str(topHole)+", bottomHole="+str(bottomHole)+", holeRightEdge="+str(holeRightEdge))
-#    for i in range(-10,10):
-#        im.putpixel((int(width/10)+i, topHole),(255,0,0))
-#        im.putpixel((int(width/10)+i, bottomHole),(255,0,0))
-#        im.putpixel((holeRightEdge,10+topHole+i ),(255,0,0))
-    return (topHole, bottomHole, holeRightEdge, holeRightEdgeLower)
+    rightHole=edgeOf(line, "lightToDark",int(reference['hole'][0]/2))+sampleLeft
+    return rightHole - (reference['hole'][2]+reference['hole'][0])
         
 
 positions={}
@@ -180,82 +145,103 @@ totalTopHole=0
 totalBottomHole=0
 totalHoleRightEdge=0
 totalHoleRightEdgeLower=0
-pidx=0
+pidx=1
 extractAudio=True
 mono=False
+stabilizeX=True
+stabilizeY=True
+
+
+left=Channel()
+right=Channel()
+voffs=0
+hoffs=0
+
 while pidx < len(sys.argv):    
     if sys.argv[pidx] == '-nosound':
         extractAudio=False
+    elif sys.argv[pidx] == '-noXoffset':
+        stabilizeX=False
+    elif sys.argv[pidx] == '-noYoffset':
+        stabilizeY=False        
     elif sys.argv[pidx] == '-mono':
         mono=True
     else:
         try:
             im=Image.open(sys.argv[pidx])
-            results=holePosition(im)
-            positions[sys.argv[pidx]]=results
-            numOfImages+=1
-            totalTopHole+=results[0]
-            totalBottomHole+=results[1]
-            totalHoleRightEdge+=results[2]
-            totalHoleRightEdgeLower+=results[3]
+            if stabilizeY:
+                voffs=holeVerticalOffset(im)
+            if stabilizeX:
+                hoffs=holeHorizontalOffset(im, voffs)
+            x1=reference['frame'][2]+hoffs
+            x2=x1+reference['frame'][0]
+            y1=reference['frame'][3]+voffs
+            y2=y1+reference['frame'][1]
+            print ("Stabilizing "+sys.argv[pidx]+", X="+str(hoffs)+", Y="+str(voffs))
+            im.crop((x1,y1,x2,y2)).save("cropped/"+sys.argv[pidx])
+            if extractAudio:
+                x1=reference['audio'][2]+hoffs
+                x3=x1+reference['audio'][0]
+                y1=reference['audio'][3]+hoffs
+                y3=y1+reference['audio'][1]                    
+                if mono:
+                    left.readFrame(im.crop((x1,y1,x3,y3)))
+                else:
+                    x2=int((x1+x3)/2)
+                    left.readFrame(im.crop((x1,y1,x2,y3)))
+                    right.readFrame(im.crop((x2,y1,x3,y3)))
+                    
+                
         except:
+            print("EXCEPTION: Skipped "+ sys.argv[pidx])
             pass
     pidx+=1
-avgTopHole=int(totalTopHole/numOfImages)
-avgBottomHole=int(totalBottomHole/numOfImages)
-avgHoleRightEdge=int(totalHoleRightEdge/numOfImages)
-avgHoleRightEdgeLower=int(totalHoleRightEdgeLower/numOfImages)
 
 
-avgDeltaHole=avgBottomHole-avgTopHole
-avgDeltaEdge=int((avgHoleRightEdge+avgHoleRightEdgeLower)/2)
 
-sizeYOut=avgDeltaHole + (avgDeltaHole % 2)
-sizeXOut=int(avgDeltaHole * 2 / 3) * 2
-scaledXOffset=int(sample['frameXoffset']*sizeXOut/sample['frameWidth'])
-scaledYOffset=int(sample['frameYoffset']*sizeYOut/sample['frameHeight'])
-if extractAudio:
-    soundStartOffset=int(sample['Tracks_start']*sizeYOut/sample['frameHeight'])
-    soundMidOffset=int(sample['Tracks_mid']*sizeYOut/sample['frameHeight'])
-    soundEndOffset=int(sample['Tracks_end']*sizeYOut/sample['frameHeight'])
-    left=Channel()
-    if not mono:
-        right=Channel()
 
-for pic in sorted(positions):
-    im=Image.open(pic)
-    results=positions[pic]
-    topHole=results[0]
-    bottomHole=results[1]
-    holeRightEdge=results[2]
-    holeRightEdgeLower=results[3]
-    if abs(topHole-avgTopHole) < abs(bottomHole-avgBottomHole):
-        bottomHole=topHole+avgDeltaHole
-    else:
-        topHole=bottomHole-avgDeltaHole
-    if abs(holeRightEdge-avgHoleRightEdge) < abs(holeRightEdgeLower-avgHoleRightEdgeLower):
-        holeRightEdgeLower=avgHoleRightEdgeLower + holeRightEdge-avgHoleRightEdge
-    else:
-        holeRightEdge=avgHoleRightEdge+holeRightEdgeLower-avgHoleRightEdgeLower
-    x1=holeRightEdge+scaledXOffset
-    y1=topHole+scaledYOffset
-    x2=x1+sizeXOut
-    y2=y1+sizeYOut
-    print("Cropping "+pic+" with values: "+str((x1,y1,x2,y2))+ " and saving in subdirectory cropped/")
-    im.crop((x1,y1,x2,y2)).save("cropped/"+pic)
-    #im.crop((x3,y1,x4,y2)).save("sound/"+pic)
-    if extractAudio:
-        x3=holeRightEdge+soundStartOffset
-        x4=holeRightEdge+soundMidOffset
-        x5=holeRightEdge+soundEndOffset
-        if mono:
-            left.readFrame(im.crop((x3,y1,x5,y2)))
-            #im.crop((x3,y1,x5,y2)).save("sound0/"+pic)
-        else:
-            left.readFrame(im.crop((x3,y1,x4,y2)))
-            #im.crop((x3-20,y1,x4,y2)).save("sound1/"+pic)
-            right.readFrame(im.crop((x4,y1,x5,y2)))
-            #im.crop((x4,y1,x5,y2)).save("sound2/"+pic)
+#if extractAudio:
+#    soundStartOffset=int(sample['Tracks_start']*sizeYOut/sample['frameHeight'])
+#    soundMidOffset=int(sample['Tracks_mid']*sizeYOut/sample['frameHeight'])
+#    soundEndOffset=int(sample['Tracks_end']*sizeYOut/sample['frameHeight'])
+#    left=Channel()
+#    if not mono:
+#        right=Channel()
+
+#for pic in sorted(positions):
+#    im=Image.open(pic)
+#    results=positions[pic]
+#    topHole=results[0]
+#    bottomHole=results[1]
+#    holeRightEdge=results[2]
+#    holeRightEdgeLower=results[3]
+#    if abs(topHole-avgTopHole) < abs(bottomHole-avgBottomHole):
+#        bottomHole=topHole+avgDeltaHole
+#    else:
+#        topHole=bottomHole-avgDeltaHole
+#    if abs(holeRightEdge-avgHoleRightEdge) < abs(holeRightEdgeLower-avgHoleRightEdgeLower):
+#        holeRightEdgeLower=avgHoleRightEdgeLower + holeRightEdge-avgHoleRightEdge
+#    else:
+#        holeRightEdge=avgHoleRightEdge+holeRightEdgeLower-avgHoleRightEdgeLower
+#    x1=holeRightEdge+scaledXOffset
+#    y1=topHole+scaledYOffset
+#    x2=x1+sizeXOut
+#    y2=y1+sizeYOut
+#    print("Cropping "+pic+" with values: "+str((x1,y1,x2,y2))+ " and saving in subdirectory cropped/")
+#    im.crop((x1,y1,x2,y2)).save("cropped/"+pic)
+#    #im.crop((x3,y1,x4,y2)).save("sound/"+pic)
+#    if extractAudio:
+#        x3=holeRightEdge+soundStartOffset
+#        x4=holeRightEdge+soundMidOffset
+#        x5=holeRightEdge+soundEndOffset
+#        if mono:
+#            left.readFrame(im.crop((x3,y1,x5,y2)))
+#            #im.crop((x3,y1,x5,y2)).save("sound0/"+pic)
+#        else:
+#            left.readFrame(im.crop((x3,y1,x4,y2)))
+#            #im.crop((x3-20,y1,x4,y2)).save("sound1/"+pic)
+#            right.readFrame(im.crop((x4,y1,x5,y2)))
+#            #im.crop((x4,y1,x5,y2)).save("sound2/"+pic)
             
 
 if extractAudio:
@@ -263,9 +249,9 @@ if extractAudio:
 
     woutput = wave.open('out.wav', 'w')
     if mono:
-        woutput.setparams((1,2,24*sizeYOut, 0, 'NONE', 'not compressed'))
+        woutput.setparams((1,2,24*reference['audio'][1], 0, 'NONE', 'not compressed'))
     else:
-        woutput.setparams((2,2,24*sizeYOut, 0, 'NONE', 'not compressed'))        
+        woutput.setparams((2,2,24*reference['audio'][1], 0, 'NONE', 'not compressed'))        
     values=[]
     print("Converting to wave")
     value_str=b''
