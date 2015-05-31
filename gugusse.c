@@ -11,7 +11,11 @@ void cb(uvc_frame_t *frame, void *ptr) {
   char fn[64];
   uvc_frame_t *bgr;
   uvc_error_t ret;
-
+  while (count++ < 300 ) {
+    return;
+  }
+  
+ 
   /* We'll convert the image from YUV/JPEG to BGR, so allocate space */
   bgr = uvc_allocate_frame(frame->width * frame->height * 3);
   if (!bgr) {
@@ -19,7 +23,7 @@ void cb(uvc_frame_t *frame, void *ptr) {
     return;
   }  
   /* Do the BGR conversion */
-  ret = uvc_any2bgr(frame, bgr);
+  ret =uvc_any2rgb (frame, bgr);
   if (ret) {
     uvc_perror(ret, "uvc_any2bgr");
     uvc_free_frame(bgr);
@@ -29,6 +33,10 @@ void cb(uvc_frame_t *frame, void *ptr) {
   sprintf(fn, "%04d.data", count);
   out=fopen(fn, "wb");
   fwrite(bgr->data, 3 *  bgr->width, bgr->height, out);
+  fclose(out);
+  sprintf(fn, "%04d.head", count);
+  out=fopen(fn, "wb");
+  fwrite(frame, sizeof(uvc_frame_t), 1, out);
   fclose(out);
 
   /* Call a user function:
@@ -108,7 +116,7 @@ int main(int argc, char **argv) {
       res = uvc_get_stream_ctrl_format_size(
           devh, &ctrl, /* result stored in ctrl */
           UVC_FRAME_FORMAT_YUYV, /* YUV 422, aka YUV 4:2:2. try _COMPRESSED */
-          2048, 1536, 5 /* width, height, fps */
+          1280, 960, 10 /* width, height, fps */
       );
 
       /* Print out the result */
@@ -129,7 +137,7 @@ int main(int argc, char **argv) {
 
           uvc_set_ae_mode(devh, 1); /* e.g., turn on auto exposure */
 
-          while (1) {sleep(10);}
+          while (1) {sleep(20);}
 
           /* End the stream. Blocks until last callback is serviced */
           uvc_stop_streaming(devh);
