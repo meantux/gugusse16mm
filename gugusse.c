@@ -6,8 +6,8 @@
 #include "stills2dv.h"
 #include "x_lowlevel.h"
 
-#define WINWIDTH 1280
-#define WINHEIGHT 720
+#define WINWIDTH 854
+#define WINHEIGHT 480
 
 #define CAMWIDTH 1280
 #define CAMHEIGHT 720
@@ -15,6 +15,13 @@
 
   ImageWindow *iw=NULL;  
   Display    *dis=NULL;
+
+
+static int th_w=WINWIDTH/4;
+static int th_h=WINHEIGHT/4;
+static int th_offx=WINWIDTH/2;
+static int th_offy=(WINHEIGHT/4);
+
 
 void checkevent(void){
   XEvent e;
@@ -35,12 +42,10 @@ void checkevent(void){
 }
 
 void showpart(unsigned char *data, int woffx, int woffy, int coffx, int coffy){
-  static int w=WINWIDTH/4;
-  static int h=WINHEIGHT/4;
   unsigned long pixel;
   int x, y, idx;
-  for (y=0;y<h;y++){
-    for (x=0;x<w;x++){
+  for (y=0;y<th_h;y++){
+    for (x=0;x<th_w;x++){
       idx=(coffy+y)*CAMWIDTH;
       idx+=coffx+x;
       idx *=3;
@@ -49,32 +54,29 @@ void showpart(unsigned char *data, int woffx, int woffy, int coffx, int coffy){
       pixel|=(unsigned int)(data[idx+1])<<16;
       pixel|=0xff000000;
       //printf("idx=%6d, pixel=%08X, offx=%d, offy=%d, x=%d, y=%d, h=%d, w=%d\n",idx, pixel, offx, offy, x,y,w,h);
-      PutPixel(iw,woffx+x, woffy+y, pixel);      
+      PutPixel(iw,woffx+x, woffy+y, pixel);
+      if ((x==0)||(y==0)||(x== (th_w-1))||(y==(th_h-1))) {
+	PutPixel(iw, th_offx+(WINWIDTH*(x+coffx)/(4*CAMWIDTH)), th_offy+(WINHEIGHT*(y+coffy)/(4*CAMHEIGHT)), 0xff0000ff);
+      }
     }
   }
 }
 
 
 void showthumbnail(unsigned char *data){
-  static int w=WINWIDTH/4;
-  static int h=WINHEIGHT/4;
-  int offx=WINWIDTH/2;
-  int offy=(WINHEIGHT/4);
-  int xstep=CAMWIDTH/w;
-  int ystep=CAMHEIGHT/h;
   unsigned long pixel;
-  int x, y, idx;
-  for (y=0;y<h;y++){
-    for (x=0;x<w;x++){
-      idx=y*ystep*CAMWIDTH;
-      idx+=x*xstep;
-      idx *=3;
+  int x, y, cx, cy, idx;
+  for (y=0;y<th_h;y++){
+    for (x=0;x<th_w;x++){
+      cx=(4*x*CAMWIDTH)/WINWIDTH;
+      cy=(4*y*CAMHEIGHT)/WINHEIGHT;
+      idx=3 * (cx+(cy*CAMWIDTH));
       pixel=data[idx];
       pixel|=(unsigned int)(data[idx+1])<<8;
       pixel|=(unsigned int)(data[idx+1])<<16;
       pixel|=0xff000000;
       //printf("idx=%6d, pixel=%08X, offx=%d, offy=%d, x=%d, y=%d, h=%d, w=%d\n",idx, pixel, offx, offy, x,y,w,h);
-      PutPixel(iw,offx+x, offy+y, pixel);      
+      PutPixel(iw,th_offx+x, th_offy+y, pixel);      
     }
   }
 }
