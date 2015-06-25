@@ -98,7 +98,7 @@ unsigned long border_color, unsigned long background_color, Visual
      if (!iw) FatalError("Out of memory!");
      iw->window = XCreateSimpleWindow(dis, parent, x, y, width, height,  
 border_width, border_color, background_color);
-     XStoreName(dis,iw->window,"stills2dv preview");
+     XStoreName(dis,iw->window,"Gugusse 16mm");
      iw->gc = XCreateGC(dis, iw->window, 0, 0);
      if (!iw->gc) FatalError("Graphics Context Couldn't be Created.");
      iw->display = dis;
