@@ -6,22 +6,22 @@
 #include "stills2dv.h"
 #include "x_lowlevel.h"
 
-#define WINWIDTH 854
-#define WINHEIGHT 480
-
-#define CAMWIDTH 1280
-#define CAMHEIGHT 720
 
 
-  ImageWindow *iw=NULL;  
-  Display    *dis=NULL;
 
+int winWidth=0;
+int winHeight=0;
+int camWidth=0;
+int camHeight=0;
+ImageWindow *iw=NULL;  
+Display    *dis=NULL;
 
-static int th_w=WINWIDTH/4;
-static int th_h=WINHEIGHT/4;
-static int th_offx=WINWIDTH/2;
-static int th_offy=(WINHEIGHT/4);
-
+void initGlobals(void){
+  camWidth=1280;
+  camHeight=720;
+  winWidth=1280;
+  winHeight=720;
+}
 
 void checkevent(void){
   XEvent e;
@@ -44,9 +44,9 @@ void checkevent(void){
 void showpart(unsigned char *data, int woffx, int woffy, int coffx, int coffy){
   unsigned long pixel;
   int x, y, idx;
-  for (y=0;y<th_h;y++){
-    for (x=0;x<th_w;x++){
-      idx=(coffy+y)*CAMWIDTH;
+  for (y=0;y<(winHeight/4);y++){
+    for (x=0;x<(winWidth/4);x++){
+      idx=(coffy+y)*camWidth;
       idx+=coffx+x;
       idx *=3;
       pixel=data[idx];
@@ -55,8 +55,8 @@ void showpart(unsigned char *data, int woffx, int woffy, int coffx, int coffy){
       pixel|=0xff000000;
       //printf("idx=%6d, pixel=%08X, offx=%d, offy=%d, x=%d, y=%d, h=%d, w=%d\n",idx, pixel, offx, offy, x,y,w,h);
       PutPixel(iw,woffx+x, woffy+y, pixel);
-      if ((x==0)||(y==0)||(x== (th_w-1))||(y==(th_h-1))) {
-	PutPixel(iw, th_offx+(WINWIDTH*(x+coffx)/(4*CAMWIDTH)), th_offy+(WINHEIGHT*(y+coffy)/(4*CAMHEIGHT)), 0xff0000ff);
+      if ((x==0)||(y==0)||(x== ((winWidth/4)-1))||(y==((winHeight/4)-1))) {
+	PutPixel(iw, (winWidth/2)+(winWidth*(x+coffx)/(4*camWidth)), (winHeight/4)+(winHeight*(y+coffy)/(4*camHeight)), 0xff0000ff);
       }
     }
   }
@@ -66,17 +66,17 @@ void showpart(unsigned char *data, int woffx, int woffy, int coffx, int coffy){
 void showthumbnail(unsigned char *data){
   unsigned long pixel;
   int x, y, cx, cy, idx;
-  for (y=0;y<th_h;y++){
-    for (x=0;x<th_w;x++){
-      cx=(4*x*CAMWIDTH)/WINWIDTH;
-      cy=(4*y*CAMHEIGHT)/WINHEIGHT;
-      idx=3 * (cx+(cy*CAMWIDTH));
+  for (y=0;y<(winHeight/4);y++){
+    for (x=0;x<(winWidth/4);x++){
+      cx=(4*x*camWidth)/winWidth;
+      cy=(4*y*camHeight)/winHeight;
+      idx=3 * (cx+(cy*camWidth));
       pixel=data[idx];
       pixel|=(unsigned int)(data[idx+1])<<8;
       pixel|=(unsigned int)(data[idx+1])<<16;
       pixel|=0xff000000;
       //printf("idx=%6d, pixel=%08X, offx=%d, offy=%d, x=%d, y=%d, h=%d, w=%d\n",idx, pixel, offx, offy, x,y,w,h);
-      PutPixel(iw,th_offx+x, th_offy+y, pixel);      
+      PutPixel(iw,(winWidth/2)+x, (winHeight/4)+y, pixel);      
     }
   }
 }
@@ -108,13 +108,13 @@ void cb(uvc_frame_t *frame, void *ptr) {
   }
   //printf("showthumbnail\n");
   showthumbnail(bgr->data);
-  showpart(bgr->data, WINWIDTH/4, 0, CAMWIDTH/10, CAMHEIGHT/10);
-  showpart(bgr->data, 3*WINWIDTH/4, 0, 9*CAMWIDTH/10 - WINWIDTH/4, CAMHEIGHT/10);
-  showpart(bgr->data, WINWIDTH/4, 3*WINHEIGHT/4, CAMWIDTH/10, 9*CAMHEIGHT/10 - WINHEIGHT/4);
-  showpart(bgr->data, 3*WINWIDTH/4, 3*WINHEIGHT/4, 9*CAMWIDTH/10-WINWIDTH/4, 9*CAMHEIGHT/10-WINHEIGHT/4);
-  showpart(bgr->data, WINWIDTH/2, WINHEIGHT/2, CAMWIDTH/2-WINWIDTH/8, CAMHEIGHT/2-WINHEIGHT/8);
-  showpart(bgr->data, WINWIDTH/4, 3*WINHEIGHT/8, CAMWIDTH/3-WINWIDTH/8, CAMHEIGHT/2-WINHEIGHT/8);
-  showpart(bgr->data, 3*WINWIDTH/4, 3*WINHEIGHT/8, 2*CAMWIDTH/3-WINWIDTH/8, CAMHEIGHT/2-WINHEIGHT/8);
+  showpart(bgr->data, winWidth/4, 0, camWidth/10, camHeight/10);
+  showpart(bgr->data, 3*winWidth/4, 0, 9*camWidth/10 - winWidth/4, camHeight/10);
+  showpart(bgr->data, winWidth/4, 3*winHeight/4, camWidth/10, 9*camHeight/10 - winHeight/4);
+  showpart(bgr->data, 3*winWidth/4, 3*winHeight/4, 9*camWidth/10-winWidth/4, 9*camHeight/10-winHeight/4);
+  showpart(bgr->data, winWidth/2, winHeight/2, camWidth/2-winWidth/8, camHeight/2-winHeight/8);
+  showpart(bgr->data, winWidth/4, 3*winHeight/8, camWidth/3-winWidth/8, camHeight/2-winHeight/8);
+  showpart(bgr->data, 3*winWidth/4, 3*winHeight/8, 2*camWidth/3-winWidth/8, camHeight/2-winHeight/8);
 
 
   //printf("checkevent\n");
@@ -168,10 +168,11 @@ int main(int argc, char **argv) {
   uvc_device_t *dev=NULL;
   uvc_device_handle_t *devh=NULL;
   uvc_stream_ctrl_t ctrl;
-  uvc_error_t res;
+  uvc_error_t res;  
   if (!dis)dis = XOpenDisplay(NULL);
   if (!dis) FatalError("Display could not be initialized.");
-  if(!iw)iw = CreateDefaultImageWindow(dis, 1, 1, WINWIDTH, WINHEIGHT);
+  initGlobals();
+  if(!iw)iw = CreateDefaultImageWindow(dis, 1, 1, winWidth, winHeight);
   checkevent();
   SendExposeEvent(iw);
   
@@ -214,7 +215,7 @@ int main(int argc, char **argv) {
       res = uvc_get_stream_ctrl_format_size(
           devh, &ctrl, /* result stored in ctrl */
           UVC_FRAME_FORMAT_COMPRESSED, /* YUV 422, aka YUV 4:2:2. try _COMPRESSED */
-          CAMWIDTH, CAMHEIGHT, 30 /* width, height, fps */
+          camWidth, camHeight, 30 /* width, height, fps */
       );
 
       /* Print out the result */
