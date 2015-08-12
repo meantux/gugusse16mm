@@ -34,26 +34,20 @@ import wave
 
 reference={
     #       width, height, xoffset, yoffset
-    "hole": (138,98,103,742),
-    "frame": (788, 578, 242, 219),
+    "hole": (10,10,10,10),
+    "frame": (1624, 1200, 62, 36),
     #       width, height, xoffset, yoffset, numOfChannels
-    "audio": (162, 578, 1048, 225, 1),
+    "audio": (374, 1228, 1740, 24, 1),
 }
 
 def square(x):
-    return x*x
+    return x*x*x
 
 
 class Channel:
-    data=[]
-    def __init__(self):
-        self.data=[]
-    def append(self, value):
-        self.data.append(value)
-    def get(self, idx):
-        return self.data[idx]
-    def getlen(self):
-        return len(self.data)
+    data=None
+    def __init__(self, name):
+        self.data=open(name+".txt", "w")        
     def readFrame(self, img):
         for y in range(0,img.size[1]):
             line=[]
@@ -64,7 +58,9 @@ class Channel:
             for i in line:
                 if i > threshold:
                     value+=1
-            self.data.append(value)
+            self.data.write(str(value)+"\n")
+    def close(self):
+        self.data.close()
             
 
        
@@ -152,8 +148,8 @@ stabilizeX=True
 stabilizeY=True
 
 
-left=Channel()
-right=Channel()
+left=Channel("left")
+right=Channel("right")
 voffs=0
 hoffs=0
 
@@ -244,21 +240,7 @@ while pidx < len(sys.argv):
 #            #im.crop((x4,y1,x5,y2)).save("sound2/"+pic)
             
 
-if extractAudio:
-    print("Processing Sound Data")
-
-    woutput = wave.open('out.wav', 'w')
-    if mono:
-        woutput.setparams((1,2,24*reference['audio'][1], 0, 'NONE', 'not compressed'))
-    else:
-        woutput.setparams((2,2,24*reference['audio'][1], 0, 'NONE', 'not compressed'))        
-    values=[]
-    print("Converting to wave")
-    value_str=b''
-    for i in range(0,left.getlen()):
-        value_str+=wave.struct.pack('h', left.get(i))
-        if not mono:
-            value_str+=wave.struct.pack('h', right.get(i))
-
-    woutput.writeframes(value_str)
-    woutput.close()
+    
+    
+left.close()
+right.close()
